@@ -33,7 +33,7 @@ enum RepoCategoryIndex {
     CAT_INDEX_VIRTUAL_REPOS,
     CAT_INDEX_SHARED_REPOS,
     CAT_INDEX_PUBLIC_REPOS,
-    CAT_INDEX_GROUP_REPOS,
+    CAT_INDEX_GROUP_REPOS
 };
 
 QRegExp makeFilterRegExp(const QString& text)

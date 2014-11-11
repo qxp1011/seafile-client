@@ -42,7 +42,7 @@ void ServerStatusService::stop()
 void ServerStatusService::refresh(bool only_refresh_unconnected)
 {
     const std::vector<Account>& accounts = seafApplet->accountManager()->accounts();
-    for (int i = 0; i < accounts.size(); i++) {
+    for (size_t i = 0; i < accounts.size(); i++) {
         const QUrl& url = accounts[i].serverUrl;
         if (requests_.contains(url.host())) {
             return;

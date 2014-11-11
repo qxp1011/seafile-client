@@ -27,7 +27,7 @@ private slots:
     void loginFailed(const ApiError& error);
 
 private:
-    Q_DISABLE_COPY(LoginDialog);
+    Q_DISABLE_COPY(LoginDialog)
     bool validateInputs();
     void disableInputs();
     void enableInputs();
