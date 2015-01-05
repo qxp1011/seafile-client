@@ -24,8 +24,27 @@
 
 #define APPNAME "seafile-applet"
 
+namespace {
+#ifdef SEAFILE_CLIENT_HAS_CRASH_REPORTER
+const char *kEnvOptionDisableCrashReporter = "SEAFILE_CLIENT_DISABLE_CRASH_REPORTER";
+#endif // SEAFILE_CLIENT_HAS_CRASH_REPORTER
+
+} // anonymous namespace
+
 int main(int argc, char *argv[])
 {
+#ifdef SEAFILE_CLIENT_HAS_CRASH_REPORTER
+    //
+    // We can override to disable crashreporter at runtime
+    //
+    QByteArray disable_crash_reporter = qgetenv(kEnvOptionDisableCrashReporter);
+    if (disable_crash_reporter.isEmpty()) {
+        // if we have built with breakpad, load it in run time
+        Breakpad::CrashHandler::instance()->Init(
+            QDir(defaultCcnetDir()).absoluteFilePath("crash-applet"));
+    }
+#endif
+
     int ret = 0;
     char c;
 #if defined(Q_WS_MAC)
@@ -52,12 +71,6 @@ int main(int argc, char *argv[])
 #endif
 
     QDir::setCurrent(QApplication::applicationDirPath());
-
-#ifdef SEAFILE_CLIENT_HAS_CRASH_REPORTER
-    // if we have built with breakpad, load it in run time
-    Breakpad::CrashHandler::instance()->Init(
-        QDir(defaultCcnetDir()).absoluteFilePath("crash-applet"));
-#endif
 
     app.setStyle(new SeafileProxyStyle());
 
@@ -91,7 +104,6 @@ int main(int argc, char *argv[])
 #else
     myappTranslator.load(QString(":/i18n/seafile_%1.qm").arg(QLocale::system().name()));
 #endif
-
     app.installTranslator(&myappTranslator);
 
     static const char *short_options = "KXc:d:f:";
