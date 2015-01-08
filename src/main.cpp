@@ -145,6 +145,8 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationDomain("seafile.com");
     QCoreApplication::setApplicationName(QString("%1 Client").arg(getBrand()));
 
+    // we are leaking memory here, (with QFontDatabase)
+    // it is strange,but i have no way to fix currently
     awesome = new QtAwesome(qApp);
     awesome->initFontAwesome();
 
