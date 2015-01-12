@@ -61,11 +61,10 @@ RepoTreeModel::RepoTreeModel(QObject *parent)
 }
 RepoTreeModel::~RepoTreeModel()
 {
-    // if we miss it, just add it and
-    // let dtor of repotreemodel to delete it automatically
-    if (item(kIndexOfVirtualReposCategory) != virtual_repos_category_) {
-        insertRow(kIndexOfVirtualReposCategory, virtual_repos_category_);
-    }
+    // FIXME we have a memory leak here
+    // however no perfect solution is provided so I left it alone
+    if (item(kIndexOfVirtualReposCategory) != virtual_repos_category_)
+        delete virtual_repos_category_;
 }
 
 void RepoTreeModel::initialize()
