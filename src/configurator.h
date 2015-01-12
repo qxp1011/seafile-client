@@ -12,6 +12,7 @@ class Configurator : public QObject {
 
 public:
     Configurator();
+    ~Configurator();
 
     void checkInit();
 
