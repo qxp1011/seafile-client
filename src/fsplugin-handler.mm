@@ -176,7 +176,9 @@ void FinderSyncServerUpdater::updateWatchSet() {
     // update watch_set_
     watch_set_.clear();
     if (rpc->listLocalRepos(&watch_set_))
-        /*do some warning*/;
+        NSLog(@"update watch set failed");
+    for (LocalRepo &repo : watch_set_)
+        rpc->getSyncStatus(repo);
 
     timer_->start(1000);
 }

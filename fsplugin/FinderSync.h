@@ -10,5 +10,5 @@
 #import <FinderSync/FinderSync.h>
 
 @interface FinderSync : FIFinderSync
-
+- (void)updateWatchSet:(void *)repos;
 @end

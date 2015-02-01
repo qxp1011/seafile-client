@@ -11,7 +11,6 @@
 
 static NSString *const kFinderSyncMachPort =
     @"com.seafile.seafile-client.findersync.machport";
-NSString *const kOnUpdateWatchSetNotification = @"OnUpdateWatchSet";
 
 static const int watch_dir_maxsize = 100;
 
@@ -38,7 +37,7 @@ struct mach_msg_watchdir_rcv_t {
 - (instancetype)init {
   self = [super init];
   self.remotePort = MACH_PORT_NULL;
-  self.localPort = nil;
+  self.localPort = MACH_PORT_NULL;
   return self;
 }
 
@@ -47,13 +46,12 @@ struct mach_msg_watchdir_rcv_t {
     NSLog(@"disconnected from mach port %@", kFinderSyncMachPort);
     mach_port_mod_refs(mach_task_self(), self.localPort,
                        MACH_PORT_RIGHT_RECEIVE, -1);
-    self.localPort = nil;
+    self.localPort = MACH_PORT_NULL;
   }
   if (self.remotePort) {
     NSLog(@"disconnected from mach port %@", kFinderSyncMachPort);
     mach_port_deallocate(mach_task_self(), self.remotePort);
   }
-  [super dealloc];
 }
 
 - (BOOL)connect {
@@ -123,6 +121,10 @@ struct mach_msg_watchdir_rcv_t {
     NSLog(@"failed to send getWatchSet request to remote mach port %u",
           remote_port);
     NSLog(@"mach error %s", mach_error_string(kr));
+    if(kr == MACH_SEND_INVALID_DEST) {
+      mach_port_deallocate(mach_task_self(), self.remotePort);
+      self.remotePort = MACH_PORT_NULL;
+    }
     return;
   }
   NSLog(@"sent getWatchSet request to remote mach port %u", remote_port);
@@ -148,11 +150,18 @@ struct mach_msg_watchdir_rcv_t {
   }
   size_t count = (recv_msg.header.msgh_size - sizeof(mach_msg_header_t)) /
     sizeof(watch_dir_t);
-  for (size_t i = 0; i != count; i++) {
-    NSLog(@"%s", recv_msg.dirs[i].body);
-    NSLog(@"statuc %u", recv_msg.dirs[i].status);
-  }
-  NSLog(@"received getWatchSet reply from remote mach port %u", remote_port);
+  NSLog(@"received getWatchSet reply count %lu from remote mach port %u", count, remote_port);
+  dispatch_async(dispatch_get_main_queue(), ^{
+                 std::vector<LocalRepo> repos;
+                 for (size_t i = 0; i != count; i++) {
+                   LocalRepo repo;
+                   repo.worktree = recv_msg.dirs[i].body;
+                   repo.status = static_cast<LocalRepo::SyncState>(recv_msg.dirs[i].status);
+                   repos.emplace_back(std::move(repo));
+
+                 }
+                 [self.parent updateWatchSet:&repos];
+                 });
 }
 
 - (void)doSharedLink:(NSString *)fileName {
