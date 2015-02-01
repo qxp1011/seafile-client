@@ -8,7 +8,6 @@
 #include <QList>
 
 #include "utils/utils.h"
-#include "utils/utils-mac.h"
 #include "seafile-applet.h"
 #include "ccnet-init.h"
 #include "ui/init-seafile-dialog.h"
@@ -44,9 +43,6 @@ Configurator::Configurator()
 
 Configurator::~Configurator()
 {
-#ifdef Q_OS_MAC
-    utils::mac::stopFSplugin();
-#endif
 }
 
 void Configurator::checkInit()
@@ -57,9 +53,6 @@ void Configurator::checkInit()
     } else {
         validateExistingConfig();
     }
-#ifdef Q_OS_MAC
-    utils::mac::startFSplugin();
-#endif
 }
 
 bool Configurator::needInitConfig()

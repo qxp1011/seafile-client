@@ -41,6 +41,8 @@
 
 #if defined(Q_OS_WIN32)
 #include "ext-handler.h"
+#elif defined(Q_OS_MAC)
+#include "fsplugin-handler.h"
 #endif
 
 #include "seafile-applet.h"
@@ -208,6 +210,9 @@ SeafileApplet::SeafileApplet()
 
 SeafileApplet::~SeafileApplet()
 {
+#ifdef Q_OS_MAC
+    stopFSplugin();
+#endif
     delete tray_icon_;
     delete certs_mgr_;
     delete settings_dialog_;
@@ -293,6 +298,8 @@ void SeafileApplet::onDaemonStarted()
 
 #if defined(Q_OS_WIN32)
     SeafileExtensionHandler::instance()->start();
+#elif defined(Q_OS_MAC)
+    startFSplugin();
 #endif
 }
 

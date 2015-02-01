@@ -9,6 +9,16 @@
 #import "FinderSync.h"
 #import "FinderSyncClient.h"
 
+enum SyncState {
+    SYNC_STATE_DISABLED,
+    SYNC_STATE_WAITING,
+    SYNC_STATE_INIT,
+    SYNC_STATE_ING,
+    SYNC_STATE_DONE,
+    SYNC_STATE_ERROR,
+    SYNC_STATE_UNKNOWN,
+};
+
 @interface FinderSync ()
 
 @property(readwrite, nonatomic, strong) NSURL *seafileFolderURL;

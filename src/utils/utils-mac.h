@@ -11,9 +11,6 @@ bool get_auto_start();
 void set_auto_start(bool enabled);
 
 QString get_path_from_fileId_url(const QString &url);
-
-void startFSplugin();
-void stopFSplugin();
 } // namespace mac
 } // namespace utils
 

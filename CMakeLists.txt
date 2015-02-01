@@ -57,10 +57,13 @@ ELSEIF (${CMAKE_SYSTEM_NAME} MATCHES "Linux" OR ${CMAKE_SYSTEM_NAME} MATCHES "BS
     LINK_DIRECTORIES(${QT_QTDBUS_LIBRARIES})
     SET(EXTRA_LIBS ${EXTRA_LIBS} ${QT_QTDBUS_LIBRARIES})
 ELSEIF (APPLE)
-    SET(platform_specific_sources src/application.cpp)
+    SET(platform_specific_moc_headers src/fsplugin-handler.h)
+    SET(platform_specific_sources src/application.cpp src/fsplugin-handler.mm)
     ## Enforce ARC for this file, since ARC is only supported after the objc
     ## runtime changes in os x 10.10
     SET_SOURCE_FILES_PROPERTIES(src/utils/utils-mac.mm
+      PROPERTIES COMPILE_FLAGS -fobjc-arc)
+    SET_SOURCE_FILES_PROPERTIES(src/fsplugin-handler.mm
       PROPERTIES COMPILE_FLAGS -fobjc-arc)
 
     FIND_LIBRARY(COCOA_LIBRARY Cocoa)

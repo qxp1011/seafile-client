@@ -13,6 +13,8 @@ static NSString *const kFinderSyncMachPort =
     @"com.seafile.seafile-client.findersync.machport";
 NSString *const kOnUpdateWatchSetNotification = @"OnUpdateWatchSet";
 
+static const int watch_dir_maxsize = 100;
+
 struct watch_dir_t {
   char body[256];
   int status;
@@ -20,7 +22,7 @@ struct watch_dir_t {
 
 struct mach_msg_watchdir_rcv_t {
   mach_msg_header_t header;
-  watch_dir_t dirs[10];
+  watch_dir_t dirs[watch_dir_maxsize];
   mach_msg_trailer_t trailer;
 };
 
@@ -144,8 +146,11 @@ struct mach_msg_watchdir_rcv_t {
     NSLog(@"mach error %s", mach_error_string(kr));
     return;
   }
-  for (int i = 0; i != 10; i++) {
+  size_t count = (recv_msg.header.msgh_size - sizeof(mach_msg_header_t)) /
+    sizeof(watch_dir_t);
+  for (size_t i = 0; i != count; i++) {
     NSLog(@"%s", recv_msg.dirs[i].body);
+    NSLog(@"statuc %u", recv_msg.dirs[i].status);
   }
   NSLog(@"received getWatchSet reply from remote mach port %u", remote_port);
 }
