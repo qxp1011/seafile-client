@@ -27,11 +27,12 @@ static std::vector<LocalRepo> repos;
 
   // Set up client
   self.client = new FinderSyncClient(self);
-  self.timer = [NSTimer scheduledTimerWithTimeInterval:2.0
-    target:self
-    selector:@selector(requestUpdateWatchSet)
-    userInfo:nil
-    repeats:YES];
+  self.timer =
+      [NSTimer scheduledTimerWithTimeInterval:2.0
+                                       target:self
+                                     selector:@selector(requestUpdateWatchSet)
+                                     userInfo:nil
+                                      repeats:YES];
 
   [FIFinderSyncController defaultController].directoryURLs = nil;
 
@@ -90,6 +91,7 @@ static std::vector<LocalRepo> repos;
 
 #pragma mark - Menu and toolbar item support
 
+#if 0
 - (NSString *)toolbarItemName {
   return @"Seafile FinderSync";
 }
@@ -101,6 +103,7 @@ static std::vector<LocalRepo> repos;
 - (NSImage *)toolbarItemImage {
   return [NSImage imageNamed:NSImageNameFolder];
 }
+#endif
 
 - (NSMenu *)menuForMenuKind:(FIMenuKind)whichMenu {
   // Produce a menu for the extension.
@@ -113,15 +116,18 @@ static std::vector<LocalRepo> repos;
 }
 
 - (IBAction)shareLinkAction:(id)sender {
-  NSURL *target = [[FIFinderSyncController defaultController] targetedURL];
   NSArray *items =
       [[FIFinderSyncController defaultController] selectedItemURLs];
+  if (![items count])
+    return;
+  NSURL *item = items.firstObject;
 
-  NSLog(@"sampleAction: menu item: %@, target = %@, items = ", [sender title],
-        [target filePathURL]);
-  [items enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-      NSLog(@"    %@", [obj filePathURL]);
-  }];
+  std::string fileName = [item fileSystemRepresentation];
+
+  dispatch_async(
+      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+          self.client->doSharedLink(fileName.c_str());
+      });
 }
 
 - (void)requestUpdateWatchSet {
@@ -132,8 +138,7 @@ static std::vector<LocalRepo> repos;
 
 - (void)updateWatchSet:(void *)new_repos {
   // notification.userInfo;
-  NSLog(@"update watch set event");
-  repos = std::move(*(std::vector<LocalRepo> *)new_repos);
+  repos = std::move(*static_cast<std::vector<LocalRepo> *>(new_repos));
   NSMutableArray *array = [NSMutableArray arrayWithCapacity:repos.size()];
   for (const LocalRepo &repo : repos) {
     [array addObject:[NSURL fileURLWithFileSystemRepresentation:repo.worktree
@@ -145,6 +150,7 @@ static std::vector<LocalRepo> repos;
   [FIFinderSyncController defaultController].directoryURLs =
       [NSSet setWithArray:array];
 
+  // initialize the badge images
   static BOOL initialized = FALSE;
   if (!initialized) {
     initialized = TRUE;
@@ -170,7 +176,8 @@ static std::vector<LocalRepo> repos;
         forBadgeIdentifier:@"INIT"];
     // ING,
     [[FIFinderSyncController defaultController]
-             setBadgeImage:[NSImage imageNamed:NSImageNameStatusPartiallyAvailable]
+             setBadgeImage:[NSImage
+                               imageNamed:NSImageNameStatusPartiallyAvailable]
                      label:@"Status Ing"
         forBadgeIdentifier:@"ING"];
     // DONE,

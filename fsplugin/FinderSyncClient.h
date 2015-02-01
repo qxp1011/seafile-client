@@ -39,6 +39,7 @@ public:
   void doSharedLink(const char* fileName);
 private:
   bool connect();
+  void connectionBecomeInvalid();
   FinderSync *parent_;
   mach_port_t local_port_;
   mach_port_t remote_port_;

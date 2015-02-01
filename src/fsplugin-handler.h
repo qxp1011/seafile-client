@@ -3,9 +3,11 @@
 #include <QObject>
 #include <QString>
 #include <QTimer>
+#include <memory>
 #include <vector>
 
 struct watch_dir_t;
+class GetSharedLinkRequest;
 class FinderSyncServerUpdater : public QObject {
     Q_OBJECT
 public:
@@ -13,11 +15,12 @@ public:
     ~FinderSyncServerUpdater();
     // called from another thread
     size_t getWatchSet(watch_dir_t *front, size_t max_size);
-    // called from main thread
-    void doShareLink(QString path);
 private slots:
     void updateWatchSet();
+    void doShareLink(QString path);
+    void onShareLinkGenerated(const QString& link);
 private:
+    std::unique_ptr<GetSharedLinkRequest> req;
     QTimer *timer_;
 };
 
