@@ -25,37 +25,24 @@ struct mach_msg_watchdir_rcv_t {
   mach_msg_trailer_t trailer;
 };
 
-@interface FinderSyncClient ()
+FinderSyncClient::FinderSyncClient(FinderSync *parent)
+    : parent_(parent), local_port_(MACH_PORT_NULL),
+      remote_port_(MACH_PORT_NULL) {}
 
-@property(readwrite, nonatomic) mach_port_t remotePort;
-@property(readwrite, nonatomic) mach_port_t localPort;
-
-@end
-
-@implementation FinderSyncClient
-
-- (instancetype)init {
-  self = [super init];
-  self.remotePort = MACH_PORT_NULL;
-  self.localPort = MACH_PORT_NULL;
-  return self;
-}
-
-- (void)dealloc {
-  if (self.localPort) {
+FinderSyncClient::~FinderSyncClient() {
+  if (local_port_) {
     NSLog(@"disconnected from mach port %@", kFinderSyncMachPort);
-    mach_port_mod_refs(mach_task_self(), self.localPort,
-                       MACH_PORT_RIGHT_RECEIVE, -1);
-    self.localPort = MACH_PORT_NULL;
+    mach_port_mod_refs(mach_task_self(), local_port_, MACH_PORT_RIGHT_RECEIVE,
+                       -1);
   }
-  if (self.remotePort) {
+  if (remote_port_) {
     NSLog(@"disconnected from mach port %@", kFinderSyncMachPort);
-    mach_port_deallocate(mach_task_self(), self.remotePort);
+    mach_port_deallocate(mach_task_self(), remote_port_);
   }
 }
 
-- (BOOL)connect {
-  if (!self.localPort) {
+bool FinderSyncClient::connect() {
+  if (!local_port_) {
 
     // Create a local port.
     mach_port_t port;
@@ -65,11 +52,11 @@ struct mach_msg_watchdir_rcv_t {
       NSLog(@"failed to connect local mach port");
       return FALSE;
     }
-    self.localPort = port;
+    local_port_ = port;
     NSLog(@"connected to local mach port %u", port);
   }
 
-  if (!self.remotePort) {
+  if (!remote_port_) {
     // connect to the mach_port
     mach_port_t port;
 
@@ -82,30 +69,28 @@ struct mach_msg_watchdir_rcv_t {
       NSLog(@"failed to connect remote mach port");
       return FALSE;
     }
-    self.remotePort = port;
+    remote_port_ = port;
 
-    NSLog(@"connected to remote mach port %u", self.remotePort);
+    NSLog(@"connected to remote mach port %u", remote_port_);
   }
 
   return TRUE;
 }
 
-- (void)getWatchSet {
+void FinderSyncClient::getWatchSet() {
   if ([NSThread isMainThread]) {
     NSLog(@"%s isn't supported to be called from main thread",
           __PRETTY_FUNCTION__);
     return;
   }
-  if (![self connect]) {
+  if (!connect()) {
     return;
   }
-  mach_port_t local_port = self.localPort;
-  mach_port_t remote_port = self.remotePort;
   mach_msg_empty_send_t msg;
   bzero(&msg, sizeof(mach_msg_header_t));
   msg.header.msgh_id = 0;
-  msg.header.msgh_local_port = local_port;
-  msg.header.msgh_remote_port = remote_port;
+  msg.header.msgh_local_port = local_port_;
+  msg.header.msgh_remote_port = remote_port_;
   msg.header.msgh_size = sizeof(msg);
   msg.header.msgh_bits =
       MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, MACH_MSG_TYPE_MAKE_SEND_ONCE);
@@ -114,81 +99,83 @@ struct mach_msg_watchdir_rcv_t {
                               MACH_SEND_MSG | MACH_SEND_TIMEOUT, /*option*/
                               sizeof(msg),                       /*send size*/
                               0,               /*receive size*/
-                              local_port,      /*receive port*/
+                              local_port_,     /*receive port*/
                               100,             /*timeout, in milliseconds*/
                               MACH_PORT_NULL); /*no notification*/
   if (kr != MACH_MSG_SUCCESS) {
     NSLog(@"failed to send getWatchSet request to remote mach port %u",
-          remote_port);
+          remote_port_);
     NSLog(@"mach error %s", mach_error_string(kr));
-    if(kr == MACH_SEND_INVALID_DEST) {
-      mach_port_deallocate(mach_task_self(), self.remotePort);
-      self.remotePort = MACH_PORT_NULL;
+    if (kr == MACH_SEND_INVALID_DEST) {
+      mach_port_deallocate(mach_task_self(), remote_port_);
+      remote_port_ = MACH_PORT_NULL;
     }
     return;
   }
-  NSLog(@"sent getWatchSet request to remote mach port %u", remote_port);
+  NSLog(@"sent getWatchSet request to remote mach port %u", remote_port_);
 
   mach_msg_watchdir_rcv_t recv_msg;
   bzero(&recv_msg, sizeof(mach_msg_header_t));
-  recv_msg.header.msgh_local_port = local_port;
-  recv_msg.header.msgh_remote_port = remote_port;
+  recv_msg.header.msgh_local_port = local_port_;
+  recv_msg.header.msgh_remote_port = remote_port_;
   // recv_msg.header.msgh_size = sizeof(recv_msg);
   // receive the reply
   kr = mach_msg(&recv_msg.header,                /* header*/
                 MACH_RCV_MSG | MACH_RCV_TIMEOUT, /*option*/
                 0,                               /*send size*/
                 sizeof(recv_msg),                /*receive size*/
-                local_port,                      /*receive port*/
+                local_port_,                     /*receive port*/
                 100,                             /*timeout, in milliseconds*/
                 MACH_PORT_NULL);                 /*no notification*/
   if (kr != MACH_MSG_SUCCESS) {
     NSLog(@"failed to receive getWatchSet reply from remote mach port %u",
-          remote_port);
+          remote_port_);
     NSLog(@"mach error %s", mach_error_string(kr));
     return;
   }
   size_t count = (recv_msg.header.msgh_size - sizeof(mach_msg_header_t)) /
-    sizeof(watch_dir_t);
-  NSLog(@"received getWatchSet reply count %lu from remote mach port %u", count, remote_port);
+                 sizeof(watch_dir_t);
+  NSLog(@"received getWatchSet reply count %lu from remote mach port %u", count,
+        remote_port_);
   dispatch_async(dispatch_get_main_queue(), ^{
-                 std::vector<LocalRepo> repos;
-                 for (size_t i = 0; i != count; i++) {
-                   LocalRepo repo;
-                   repo.worktree = recv_msg.dirs[i].body;
-                   repo.status = static_cast<LocalRepo::SyncState>(recv_msg.dirs[i].status);
-                   repos.emplace_back(std::move(repo));
-
-                 }
-                 [self.parent updateWatchSet:&repos];
-                 });
+      std::vector<LocalRepo> repos;
+      for (size_t i = 0; i != count; i++) {
+        LocalRepo repo;
+        repo.worktree = recv_msg.dirs[i].body;
+        repo.status =
+            static_cast<LocalRepo::SyncState>(recv_msg.dirs[i].status);
+        repos.emplace_back(std::move(repo));
+      }
+      [parent_ updateWatchSet:&repos];
+  });
 }
 
-- (void)doSharedLink:(NSString *)fileName {
+void FinderSyncClient::doSharedLink(const char *fileName) {
   if ([NSThread isMainThread]) {
     NSLog(@"%s isn't supported to be called from main thread",
           __PRETTY_FUNCTION__);
     return;
   }
-  if (![self connect]) {
+  if (!connect()) {
     return;
   }
   mach_msg_empty_send_t msg;
   bzero(&msg, sizeof(msg));
   msg.header.msgh_id = 1;
   msg.header.msgh_local_port = MACH_PORT_NULL;
-  msg.header.msgh_remote_port = self.remotePort;
+  msg.header.msgh_remote_port = remote_port_;
   msg.header.msgh_size = sizeof(msg);
   msg.header.msgh_bits = MACH_MSGH_BITS_REMOTE(MACH_MSG_TYPE_COPY_SEND);
   // send a message only
   kern_return_t kr = mach_msg_send(&msg.header);
   if (kr != MACH_MSG_SUCCESS) {
-    NSLog(@"failed to send doSharedLink to remote mach port %u",
-          self.remotePort);
+    NSLog(@"failed to send doSharedLink to remote mach port %u", remote_port_);
     NSLog(@"mach error %s", mach_error_string(kr));
+    if (kr == MACH_SEND_INVALID_DEST) {
+      mach_port_deallocate(mach_task_self(), remote_port_);
+      remote_port_ = MACH_PORT_NULL;
+    }
     return;
   }
-  NSLog(@"sent doSharedLink request to remote mach port %u", self.remotePort);
+  NSLog(@"sent doSharedLink request to remote mach port %u", remote_port_);
 }
-
-@end

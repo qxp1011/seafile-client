@@ -11,7 +11,7 @@
 
 @interface FinderSync ()
 
-@property(readwrite, nonatomic, strong) FinderSyncClient *client;
+@property(readwrite, nonatomic) FinderSyncClient *client;
 @property(readwrite, nonatomic, strong) NSTimer *timer;
 @end
 
@@ -26,8 +26,7 @@ static std::vector<LocalRepo> repos;
         [[NSBundle mainBundle] bundlePath], __TIME__);
 
   // Set up client
-  self.client = [[FinderSyncClient alloc] init];
-  self.client.parent = self;
+  self.client = new FinderSyncClient(self);
   self.timer = [NSTimer scheduledTimerWithTimeInterval:2.0
     target:self
     selector:@selector(requestUpdateWatchSet)
@@ -40,6 +39,7 @@ static std::vector<LocalRepo> repos;
 }
 
 - (void)dealloc {
+  delete self.client;
   NSLog(@"%s unloaded ; compiled at %s", __PRETTY_FUNCTION__, __TIME__);
 }
 
@@ -127,7 +127,7 @@ static std::vector<LocalRepo> repos;
 - (void)requestUpdateWatchSet {
   dispatch_async(
       dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0),
-      ^{ [self.client getWatchSet]; });
+      ^{ self.client->getWatchSet(); });
 }
 
 - (void)updateWatchSet:(void *)new_repos {

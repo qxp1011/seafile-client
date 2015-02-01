@@ -7,12 +7,12 @@
 //
 
 #import <Cocoa/Cocoa.h>
-#import "FinderSync.h"
 #include <thread>
 #include <mutex>
 
 #include <vector>
 #include <string>
+#import "FinderSync.h"
 
 struct LocalRepo {
   LocalRepo() = default;
@@ -31,8 +31,15 @@ struct LocalRepo {
   SyncState status;
 };
 
-@interface FinderSyncClient : NSObject
-@property(readwrite, nonatomic, assign) FinderSync* parent;
-- (void)getWatchSet;
-- (void)doSharedLink:(NSString*) fileName;
-@end
+class FinderSyncClient {
+public:
+  FinderSyncClient(FinderSync *parent);
+  ~FinderSyncClient();
+  void getWatchSet();
+  void doSharedLink(const char* fileName);
+private:
+  bool connect();
+  FinderSync *parent_;
+  mach_port_t local_port_;
+  mach_port_t remote_port_;
+};
