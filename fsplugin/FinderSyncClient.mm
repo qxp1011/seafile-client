@@ -13,6 +13,17 @@ static NSString *const kFinderSyncMachPort =
     @"com.seafile.seafile-client.findersync.machport";
 NSString *const kOnUpdateWatchSetNotification = @"OnUpdateWatchSet";
 
+struct watch_dir_t {
+  char body[256];
+  int status;
+};
+
+struct mach_msg_watchdir_rcv_t {
+  mach_msg_header_t header;
+  watch_dir_t dirs[10];
+  mach_msg_trailer_t trailer;
+};
+
 @interface FinderSyncClient ()
 
 @property(readwrite, nonatomic) mach_port_t remotePort;
@@ -114,13 +125,13 @@ NSString *const kOnUpdateWatchSetNotification = @"OnUpdateWatchSet";
   }
   NSLog(@"sent getWatchSet request to remote mach port %u", remote_port);
 
-  mach_msg_empty_rcv_t recv_msg;
+  mach_msg_watchdir_rcv_t recv_msg;
   bzero(&recv_msg, sizeof(mach_msg_header_t));
   recv_msg.header.msgh_local_port = local_port;
   recv_msg.header.msgh_remote_port = remote_port;
-  //recv_msg.header.msgh_size = sizeof(recv_msg);
+  // recv_msg.header.msgh_size = sizeof(recv_msg);
   // receive the reply
-  kr = mach_msg(&msg.header,                     /* header*/
+  kr = mach_msg(&recv_msg.header,                /* header*/
                 MACH_RCV_MSG | MACH_RCV_TIMEOUT, /*option*/
                 0,                               /*send size*/
                 sizeof(recv_msg),                /*receive size*/
@@ -133,10 +144,10 @@ NSString *const kOnUpdateWatchSetNotification = @"OnUpdateWatchSet";
     NSLog(@"mach error %s", mach_error_string(kr));
     return;
   }
-  NSLog(@"received getWatchSet reply from remote mach port %u", recv_msg.header.msgh_remote_port);
-
-  // remote_port become null after receive
-  self.remotePort = remote_port;
+  for (int i = 0; i != 10; i++) {
+    NSLog(@"%s", recv_msg.dirs[i].body);
+  }
+  NSLog(@"received getWatchSet reply from remote mach port %u", remote_port);
 }
 
 - (void)doSharedLink:(NSString *)fileName {

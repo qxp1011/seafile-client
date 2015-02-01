@@ -20,6 +20,16 @@
 @property(readwrite, nonatomic, strong) NSPort *listenerPort;
 @end
 
+struct watch_dir_t {
+    char body[256];
+    int status;
+};
+
+struct mach_msg_watchdir_send_t {
+    mach_msg_header_t header;
+    watch_dir_t dirs[10];
+};
+
 static NSString *const kFinderSyncMachPort =
     @"com.seafile.seafile-client.findersync.machport";
 static NSString *const kFinderSyncShouldExitNotification = @"FinderSyncShouldExit";
@@ -113,13 +123,16 @@ static FinderSyncServer *fsplugin_server = nil;
   if (!port) {
     return;
   }
-  mach_msg_empty_send_t reply_msg;
+  mach_msg_watchdir_send_t reply_msg;
   bzero(&reply_msg, sizeof(mach_msg_header_t));
   reply_msg.header.msgh_id = header->msgh_id + 100;
   reply_msg.header.msgh_size = sizeof(reply_msg);
   reply_msg.header.msgh_local_port = MACH_PORT_NULL;
   reply_msg.header.msgh_remote_port = port;
   reply_msg.header.msgh_bits = MACH_MSGH_BITS_REMOTE(header->msgh_bits);
+  for(int i = 0; i != 10; i ++) {
+  strcpy(reply_msg.dirs[i].body, "Hello World\n");
+  }
 
   // send the reply
   kern_return_t kr = mach_msg_send(&reply_msg.header);
